@@ -1,29 +1,23 @@
 """
 네이버시리즈 웹소설 랭킹 스크래퍼.
 
-★ 중요: selector는 placeholder임. 실제 사용 전에 반드시 아래 작업 필요:
-  1. 브라우저에서 네이버시리즈 웹소설 랭킹 페이지 열기
-  2. F12 (개발자도구) > Elements 탭에서 랭킹 리스트의 실제 class/구조 확인
-  3. 아래 SELECTORS 딕셔너리 값 교체
-  4. 사이트 개편되면 이 파일도 다시 손봐야 함 (크롤러의 숙명)
+selector는 실제 DevTools 확인을 거쳐 채운 값 (2026-07 기준).
+사이트 개편되면 다시 확인 필요.
 
 실행 전 설치:
   pip install playwright
   playwright install chromium
 """
+import re
+from urllib.parse import urljoin
 from playwright.sync_api import sync_playwright
 
-# TODO: 실제 랭킹 URL로 교체 (예: 장르별 베스트 랭킹, 급상승 랭킹 등)
 RANKING_URL = "https://series.naver.com/novel/top100List.series"
 
-# TODO: 실제 DOM 구조에 맞게 selector 교체
 SELECTORS = {
-    "item": ".rankingList li",       # 랭킹 리스트의 개별 항목
-    "title": ".title",
-    "author": ".author",
-    "genre": ".genre",
-    "link": "a",                     # href에서 작품 ID 추출
-    "exclusive_badge": ".badge_exclusive",
+    "item": "ul.comic_top_lst > li",
+    "rank": ".top_numb",
+    "title_link": "h3 a",
 }
 
 
@@ -35,29 +29,31 @@ def scrape_naver_ranking(headless=True):
         page.goto(RANKING_URL, wait_until="networkidle")
 
         items = page.query_selector_all(SELECTORS["item"])
-        for rank, item in enumerate(items, start=1):
-            title_el = item.query_selector(SELECTORS["title"])
-            author_el = item.query_selector(SELECTORS["author"])
-            genre_el = item.query_selector(SELECTORS["genre"])
-            link_el = item.query_selector(SELECTORS["link"])
-            exclusive_el = item.query_selector(SELECTORS["exclusive_badge"])
+        for idx, item in enumerate(items, start=1):
+            rank_el = item.query_selector(SELECTORS["rank"])
+            title_el = item.query_selector(SELECTORS["title_link"])
 
-            if not title_el or not link_el:
+            if not title_el:
                 continue
 
-            href = link_el.get_attribute("href") or ""
-            # TODO: 실제 URL 패턴에 맞게 ID 추출 로직 교체
-            # 예: /novel/list?novelId=804489 -> "804489"
-            work_id = href.split("=")[-1] if "=" in href else href
+            href = title_el.get_attribute("href") or ""
+            id_match = re.search(r"productNo=(\d+)", href)
+            work_id = id_match.group(1) if id_match else href
+
+            title_text = title_el.inner_text().strip()
+            is_exclusive = "독점" in title_text
+
+            rank_digits = re.sub(r"\D", "", rank_el.inner_text()) if rank_el else ""
+            rank_num = int(rank_digits) if rank_digits else idx
 
             results.append({
                 "platform_work_id": work_id,
-                "title": title_el.inner_text().strip(),
-                "author": author_el.inner_text().strip() if author_el else None,
-                "genre": genre_el.inner_text().strip() if genre_el else None,
-                "url": href if href.startswith("http") else f"https://series.naver.com{href}",
-                "is_exclusive": exclusive_el is not None,
-                "rank": rank,
+                "title": title_text,
+                "author": None,
+                "genre": None,
+                "url": urljoin(RANKING_URL, href),
+                "is_exclusive": is_exclusive,
+                "rank": rank_num,
                 "views": None,
             })
 
