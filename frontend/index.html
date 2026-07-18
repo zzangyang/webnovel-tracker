@@ -73,11 +73,6 @@
   }
   .feature h1{font-family:var(--serif); font-size:26px; font-weight:700; line-height:1.4; color:#fff;}
   .feature .meta{font-size:12px; color:var(--text-soft); margin-top:8px;}
-  .feature a{
-    color:#1a1008; background:var(--accent); padding:10px 18px; font-size:12px; border-radius:8px;
-    text-decoration:none; white-space:nowrap; font-weight:500;
-  }
-  .feature a:hover{opacity:0.85;}
 
   .grid-2{display:grid; grid-template-columns:1.6fr 1fr; gap:28px;}
   @media (max-width:760px){ .grid-2{grid-template-columns:1fr;} }
@@ -165,6 +160,10 @@
   .report-list a:hover{color:var(--accent); background:var(--bg-card-2);}
   .report-list .date{color:var(--text-soft); font-size:11px;}
 
+  .data-note{
+    font-size:11px; color:var(--text-soft); text-align:center; margin:-24px 0 24px;
+  }
+
   footer{
     border-top:1px solid var(--border); padding-top:16px; margin-top:32px;
     font-size:11px; color:var(--text-soft); text-align:center;
@@ -184,17 +183,17 @@
     </div>
   </header>
   <div class="issue-line">
-    <span>2026년 7월 3주차 기준</span>
-    <span>매주 일요일 업데이트</span>
+    <span id="issueDate">기준일 불러오는 중...</span>
+    <span>매주 일요일 업데이트 (GitHub Actions 자동 갱신)</span>
   </div>
+  <div class="data-note" id="dataNote"></div>
 
   <section class="feature">
     <div>
-      <div class="label">이번 주 주목작</div>
-      <h1>물거품이 되기 전에</h1>
-      <div class="meta">로맨스판타지 · 네이버시리즈 독점 · 74단계 급상승</div>
+      <div class="label" id="featureLabel">이번 주 급상승 1위</div>
+      <h1 id="featureTitle">데이터 로딩 중...</h1>
+      <div class="meta" id="featureMeta"></div>
     </div>
-    <a href="#">주간 리포트 보기 →</a>
   </section>
 
   <section>
@@ -220,13 +219,17 @@
     <div class="idea-head-row">
       <span class="badge">TREND BASED</span>
       <span style="font-size:11px; color:var(--text-soft);">이번 주 급상승·신규 데이터에서 뽑은 소재 조합 — 초안일 뿐, 다듬는 건 네 몫</span>
-      <button class="idea-refresh" id="ideaRefreshBtn" onclick="regenerateIdeas()">↻ 다시 제안받기</button>
+    </div>
+    <div style="font-size:12px; color:var(--text-soft); background:var(--bg-card); border:1px solid var(--border); border-radius:10px; padding:14px 16px; margin-bottom:14px;">
+      💬 실시간 재생성은 이 공개 페이지에서는 지원 안 돼요 (API 키가 필요한 기능이라 브라우저에서 직접 못 불러요).
+      아래 데이터 갖고 Claude 채팅에서 "이번 주 트렌드로 신작 아이디어 짜줘"라고 물어보면 똑같이 만들어줘요.
     </div>
     <div class="idea-grid" id="ideaGrid"></div>
   </section>
 
   <section>
-    <div class="section-head"><h2>인기 키워드</h2><span class="en">KEYWORDS</span></div>
+    <div class="section-head"><h2>제목 속 인기 단어</h2><span class="en">FREQUENT WORDS</span></div>
+    <div style="font-size:11px; color:var(--text-soft); margin:-8px 0 12px;">공식 키워드 태그가 아니라, 이번 주 랭킹 제목들에서 단순 빈도로 뽑은 근사치예요</div>
     <div class="keyword-cloud" id="keywordCloud"></div>
   </section>
 
@@ -259,72 +262,37 @@
 </div>
 
 <script>
-const rising = [
-  { rank: 1, delta: 74, title: "물거품이 되기 전에", meta: "로맨스판타지 · 네이버 · 독점" },
-  { rank: 2, delta: 41, title: "레가스", meta: "판타지 · 네이버 · 신규" },
-  { rank: 3, delta: 33, title: "힐러는 원래 앞장선다", meta: "판타지 · 네이버 · 신규" },
-  { rank: 4, delta: 19, title: "당신의 막내입니다", meta: "BL · 네이버 · 선공개" },
-  { rank: 5, delta: 12, title: "다이아몬드 더스트", meta: "판타지 · 네이버" },
+// 샘플 데이터 (data.json 로딩 실패 시 폴백용)
+let rising = [
+  { rank: 1, delta: 20, title: "샘플 데이터 — 아직 크롤링 결과 없음", meta: "naver · 연재중" },
 ];
-
-const genres = [
-  { name: "판타지", pct: 42 },
-  { name: "로맨스", pct: 21 },
-  { name: "로맨스판타지", pct: 21 },
-  { name: "BL", pct: 15 },
+let genres = [ { name: "naver", pct: 100 } ];
+let newEntries = [
+  { genre: "naver", title: "data.json이 아직 없어요", platform: "연재중" },
 ];
-
-const newEntries = [
-  { genre: "판타지", title: "회장님, 신점 보시려면 줄부터 서세요", platform: "네이버" },
-  { genre: "판타지", title: "용사의 인벤토리를 물려받았다", platform: "네이버 · 독점" },
-  { genre: "로맨스", title: "우리는 사랑이 아닌", platform: "네이버 · 독점" },
-  { genre: "판타지", title: "금쪽같은 마왕님", platform: "네이버" },
-  { genre: "로맨스", title: "내 비서의 임신", platform: "네이버 · 독점" },
-];
+let keywords = [ { text: "샘플", size: "k2" } ];
+let reports = [];
 
 const ideas = [
-  {
-    title: "가안 · 헌터 x 요식업",
-    logline: "던전 옆 식당을 물려받은 최약체 헌터가, 요리로 손님(과 몬스터)을 길들인다.",
-    tags: ["헌터물", "요리물"],
-    basis: "근거: 헌터물 신규진입 3건 + 힐링물 키워드 급상승",
-  },
-  {
-    title: "가안 · 회귀 x 영지",
-    logline: "세 번째 회귀에서야 깨달았다 — 무너뜨릴 게 아니라 세를 불려야 이긴다는 걸.",
-    tags: ["회귀", "영지물"],
-    basis: "근거: 영지물 키워드 노출 증가 + 로판 점유율 유지",
-  },
-  {
-    title: "가안 · 착각물 x BL",
-    logline: "다 정리했다고 생각한 순간, 상대는 이미 다른 결말을 쓰고 있었다.",
-    tags: ["착각물", "BL"],
-    basis: "근거: BL 신규 선공개작 반응 + 착각물 태그 지속 상위권",
-  },
+  { title: "가안 · 트렌드 반영 예정", logline: "데이터가 쌓이면 여기 실제 트렌드 기반 아이디어가 나와요.",
+    tags: ["대기중"], basis: "근거: data.json 로딩 후 갱신됨" },
 ];
 
-const keywords = [
-  { text: "회귀", size: "k1" }, { text: "헌터물", size: "k1" },
-  { text: "영지물", size: "k2" }, { text: "착각물", size: "k2" },
-  { text: "빙의", size: "k2" }, { text: "힐링물", size: "k3" },
-  { text: "복수극", size: "k3" }, { text: "계약연애", size: "k3" },
-  { text: "환생", size: "k4" }, { text: "재벌", size: "k4" }, { text: "육아물", size: "k4" },
-];
-
-const reports = [
-  { date: "2026-07-13", title: "2026년 7월 3주차 리포트" },
-  { date: "2026-07-06", title: "2026년 7월 1주차 리포트" },
-  { date: "2026-06-29", title: "2026년 6월 5주차 리포트" },
-];
-
+// 장르별 컬러 (장르 없는 항목은 플랫폼명 fallback으로 들어옴)
 const GENRE_COLORS = {
   "판타지": { fg: "#b3a5ff", bg: "#241c47" },
-  "로맨스": { fg: "#ff9ec2", bg: "#3a1f30" },
   "로맨스판타지": { fg: "#5eeba3", bg: "#12351f" },
+  "로판": { fg: "#5eeba3", bg: "#12351f" },
+  "로맨스": { fg: "#ff9ec2", bg: "#3a1f30" },
   "BL": { fg: "#ffc06a", bg: "#3a2a10" },
+  "무협": { fg: "#ff8a65", bg: "#3a1f10" },
+  "현판": { fg: "#7ec8f7", bg: "#152a3a" },
+  "naver": { fg: "#5eeba3", bg: "#12351f" },
+  "kakao": { fg: "#ffc06a", bg: "#3a2a10" },
+  "ridi":  { fg: "#7ec8f7", bg: "#152a3a" },
 };
-function genreColor(name){
-  const key = Object.keys(GENRE_COLORS).find(k => name.includes(k));
+function platformColor(name){
+  const key = Object.keys(GENRE_COLORS).find(k => (name || "").toLowerCase().includes(k.toLowerCase()));
   return GENRE_COLORS[key] || { fg: "#9aa2c4", bg: "#1c2440" };
 }
 const TAG_PALETTE = [
@@ -334,9 +302,17 @@ const TAG_PALETTE = [
 ];
 function tagColor(i){ return TAG_PALETTE[i % TAG_PALETTE.length]; }
 
-function renderRising(){
+function renderAll(){
+  document.getElementById('issueDate').textContent = window.__generatedAt
+    ? `${window.__generatedAt} 기준` : "기준일 정보 없음";
+
+  if (rising[0]) {
+    document.getElementById('featureTitle').textContent = rising[0].title;
+    document.getElementById('featureMeta').textContent = rising[0].meta + ` · ${rising[0].delta}단계 급상승`;
+  }
+
   document.getElementById('risingList').innerHTML = rising.map(r => {
-    const g = genreColor(r.meta);
+    const g = platformColor(r.meta);
     return `
     <div class="ledger-row">
       <div class="rank-num">${r.rank}</div>
@@ -347,22 +323,18 @@ function renderRising(){
       <div class="stamp">▲ ${r.delta}</div>
     </div>`;
   }).join('');
-}
 
-function renderGenreBars(){
   document.getElementById('genreBars').innerHTML = genres.map(g => {
-    const c = genreColor(g.name);
+    const c = platformColor(g.name);
     return `
     <div class="genre-bar-row">
       <div class="genre-bar-label"><b style="color:${c.fg}">${g.name}</b><span>${g.pct}%</span></div>
       <div class="genre-bar-track"><div class="genre-bar-fill" style="width:${g.pct}%; background:${c.fg}"></div></div>
     </div>`;
   }).join('');
-}
 
-function renderNewEntries(){
   document.getElementById('newGrid').innerHTML = newEntries.map(n => {
-    const g = genreColor(n.genre);
+    const g = platformColor(n.genre);
     return `
     <div class="new-card" style="border-top-color:${g.fg}">
       <span class="genre-tag" style="color:${g.fg}; background:${g.bg};">${n.genre}</span>
@@ -370,9 +342,7 @@ function renderNewEntries(){
       <div class="platform">${n.platform}</div>
     </div>`;
   }).join('');
-}
 
-function renderIdeas(){
   document.getElementById('ideaGrid').innerHTML = ideas.map(i => `
     <div class="idea-card">
       <div class="idea-title">${i.title}</div>
@@ -383,77 +353,39 @@ function renderIdeas(){
       }).join('')}</div>
       <div class="basis">${i.basis}</div>
     </div>`).join('');
-}
 
-function renderKeywords(){
   document.getElementById('keywordCloud').innerHTML = keywords.map((k, idx) => {
     const c = tagColor(idx);
     return `<span class="${k.size}" style="color:${c.fg}; background:${c.bg};">${k.text}</span>`;
   }).join('');
+
+  document.getElementById('reportList').innerHTML = reports.length
+    ? reports.map(r => `<a href="../reports/${r.date}.md"><span>${r.title}</span><span class="date">${r.date}</span></a>`).join('')
+    : `<div style="padding:16px; font-size:13px; color:var(--text-soft);">아직 생성된 리포트가 없어요.</div>`;
 }
 
-function renderReports(){
-  document.getElementById('reportList').innerHTML = reports.map(r => `
-    <a href="#"><span>${r.title}</span><span class="date">${r.date}</span></a>
-  `).join('');
-}
+async function loadData(){
+  try {
+    const res = await fetch('./data.json', { cache: "no-store" });
+    if (!res.ok) throw new Error("data.json 없음");
+    const data = await res.json();
 
-renderRising();
-renderGenreBars();
-renderNewEntries();
-renderIdeas();
-renderKeywords();
-renderReports();
+    rising = data.rising && data.rising.length ? data.rising : rising;
+    genres = data.genres && data.genres.length ? data.genres : genres;
+    newEntries = data.newEntries && data.newEntries.length ? data.newEntries : newEntries;
+    keywords = data.keywords && data.keywords.length ? data.keywords : keywords;
+    reports = data.reports || [];
+    window.__generatedAt = data.generated_at;
 
-async function regenerateIdeas(){
-  const btn = document.getElementById('ideaRefreshBtn');
-  btn.disabled = true;
-  btn.textContent = "생성 중...";
-
-  const trendContext = {
-    급상승: rising.map(r => r.title + " (" + r.meta + ")"),
-    신규진입: newEntries.map(n => n.genre + " " + n.title),
-    인기키워드: keywords.map(k => k.text),
-    장르점유율: genres,
-  };
-
-  const prompt = `당신은 한국 웹소설 시장 트렌드 분석가입니다. 아래 이번 주 트렌드 데이터를 참고해서,
-새로 집필할 만한 웹소설 아이디어 3개를 제안하세요.
-
-트렌드 데이터: ${JSON.stringify(trendContext)}
-
-각 아이디어는 다음 JSON 배열 형식으로만 답하세요. 다른 설명 없이 JSON만 출력하세요:
-[
-  {"title": "가안 · 소재 요약(10자 내외)", "logline": "한 문장 로그라인(40자 내외)", "tags": ["태그1","태그2"], "basis": "근거: 어떤 트렌드 데이터에 기반했는지 한 줄"},
-  ...
-]`;
-
-  try{
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-6",
-        max_tokens: 1000,
-        messages: [{ role: "user", content: prompt }],
-      }),
-    });
-    const data = await response.json();
-    const textBlock = data.content.find(b => b.type === "text");
-    const clean = textBlock.text.replace(/```json|```/g, "").trim();
-    const newIdeas = JSON.parse(clean);
-
-    ideas.length = 0;
-    newIdeas.forEach(i => ideas.push(i));
-    renderIdeas();
-  }catch(e){
-    console.error("아이디어 생성 실패:", e);
-    alert("아이디어 생성에 실패했어요. 잠시 후 다시 시도해줘.");
-  }finally{
-    btn.disabled = false;
-    btn.textContent = "↻ 다시 제안받기";
+    document.getElementById('dataNote').textContent = "";
+  } catch (e) {
+    document.getElementById('dataNote').textContent =
+      "⚠ 아직 실제 크롤링 데이터(data.json)가 없어서 샘플로 보여주고 있어요. Actions가 한 번 더 돌면 실데이터로 바뀌어요.";
   }
+  renderAll();
 }
+
+loadData();
 </script>
 </body>
 </html>
