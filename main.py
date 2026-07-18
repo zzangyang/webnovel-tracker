@@ -12,6 +12,7 @@ from scrapers.db_utils import init_db, save_ranking_batch
 from scrapers.naver_scraper import scrape_naver_ranking
 from scrapers.kakao_scraper import scrape_kakao_ranking
 from scrapers.ridi_scraper import scrape_ridi_ranking
+from scrapers.export_json import export_dashboard_json
 from reports.generate_report import generate_weekly_report
 
 
@@ -36,6 +37,7 @@ def run():
             print(f"[{platform}] 크롤링 실패: {e}")
 
     generate_weekly_report(snapshot_date=today)
+    export_dashboard_json()
 
 
 if __name__ == "__main__":

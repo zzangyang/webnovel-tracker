@@ -1,17 +1,13 @@
 """
 카카오페이지 웹소설 랭킹 스크래퍼.
 
-카카오페이지는 Next.js 기반이라 class명이 빌드마다 바뀌는 해시값
-(예: jsx-2792908821)이라 그걸로는 못 잡음.
-대신 각 작품 링크의 aria-label / data-t-obj 속성에 제목·순위·장르가
-텍스트/JSON으로 들어있어서 그걸 파싱하는 방식으로 감.
+장르 탭 URL이 따로 없어서(클릭해도 주소 안 바뀜, 클라이언트 필터링 방식),
+대신 각 항목의 data-t-obj JSON 안에 이미 장르(subcategory)가 박혀있는 걸
+활용함 — 2026-07 실제 캡처로 "eventMeta" 키, "subcategory" 필드 확인됨.
 
 aria-label 예시: "작품, {제목}, {태그}, 최신 회차 업데이트됨, {연령제한}, 랭킹 {N}위 {변동}, 버튼"
 data-t-obj 예시: {"eventMeta": {"id": "...", "name": "{제목}", "series_id": "...",
                                 "category": "웹소설", "subcategory": "{장르}"}, ...}
-
-★ data-t-obj의 최상위 키("eventMeta")는 화면 캡처에서 줄바꿈 때문에 확실치 않음 —
-  실행해보고 안 맞으면 print(raw)로 실제 키 확인해서 고칠 것.
 
 실행 전 설치:
   pip install playwright
@@ -30,7 +26,13 @@ def scrape_kakao_ranking(headless=True):
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=headless)
         page = browser.new_page()
-        page.goto(RANKING_URL, wait_until="networkidle")
+        page.goto(RANKING_URL, wait_until="domcontentloaded", timeout=60000)
+        try:
+            page.wait_for_selector('a[href^="/content/"]', timeout=15000)
+        except Exception:
+            print("[kakao] 랭킹 리스트 로딩 실패 — 페이지 구조 변경 가능성")
+            browser.close()
+            return results
 
         links = page.query_selector_all('a[href^="/content/"]')
         for idx, link in enumerate(links, start=1):
@@ -45,7 +47,6 @@ def scrape_kakao_ranking(headless=True):
             genre = None
             rank_num = idx
 
-            # 1순위: data-t-obj JSON에서 제목/장르 파싱 시도
             obj_div = link.query_selector("[data-t-obj]")
             if obj_div:
                 raw = obj_div.get_attribute("data-t-obj")
@@ -55,9 +56,8 @@ def scrape_kakao_ranking(headless=True):
                     title = meta.get("name")
                     genre = meta.get("subcategory")
                 except Exception:
-                    pass  # JSON 파싱 실패하면 아래 aria-label 파싱으로 대체
+                    pass
 
-            # 2순위: aria-label 텍스트 파싱 (title 없을 때 + 순위는 항상 여기서)
             if aria_label:
                 parts = [p.strip() for p in aria_label.split(",")]
                 if not title and len(parts) > 1:
