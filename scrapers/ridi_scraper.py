@@ -28,7 +28,17 @@ def scrape_ridi_ranking(headless=True):
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=headless)
         page = browser.new_page()
-        page.goto(RANKING_URL, wait_until="networkidle")
+
+        # networkidle 대신 domcontentloaded: 광고/분석 스크립트가 계속 돌아서
+        # networkidle은 영영 안 끝날 수 있음. 대신 실제 콘텐츠(책 링크)가
+        # 뜰 때까지만 명시적으로 기다림.
+        page.goto(RANKING_URL, wait_until="domcontentloaded", timeout=60000)
+        try:
+            page.wait_for_selector('a[href*="/books/"]', timeout=15000)
+        except Exception:
+            print("[ridi] 랭킹 리스트 로딩 자체가 안 됨 — 페이지 구조가 바뀌었거나 접근 차단 가능성")
+            browser.close()
+            return results
 
         book_links = page.query_selector_all('a[href*="/books/"]')
         seen_ids = set()
