@@ -16,15 +16,15 @@ from scrapers.db_utils import get_connection
 OUTPUT_PATH = Path(__file__).parent.parent / "docs" / "data.json"
 REPORTS_DIR = Path(__file__).parent.parent / "reports"
 
-# 키워드 빈도 계산에서 제외할 흔한 조사/기호성 단어 (완벽하지 않음 — 근사치)
-STOPWORDS = {"그리고", "그런데", "하지만", "완결", "무료", "독점", "선공개", "신작"}
-
-
-def _clean_title_words(title):
-    # 대괄호 태그([독점] 등) 제거
-    cleaned = re.sub(r"\[[^\]]*\]", "", title)
-    words = re.split(r"\s+", cleaned.strip())
-    return [w for w in words if len(w) >= 2 and w not in STOPWORDS]
+# 웹소설에서 흔히 쓰이는 소재/트로프 키워드 — 제목에 이 단어가 포함되면 카운트.
+# 단순 단어빈도(공백 split)는 한국어 제목 특성상(띄어쓰기 없는 한 단어 제목이 많음)
+# 거의 안 겹쳐서 의미가 없었음 — 그래서 사전 정의 트로프 목록 매칭 방식으로 변경.
+TROPE_KEYWORDS = [
+    "회귀", "빙의", "환생", "각성", "헌터", "무협", "마법사", "아카데미",
+    "재벌", "계약", "복수", "육아", "힐링", "착각", "완결", "독점",
+    "최강", "폐급", "빌런", "천재", "black", "황후", "공작", "군주",
+    "귀환", "리메이크", "서포터", "시한부", "선공개", "신점", "영지",
+]
 
 
 def export_dashboard_json():
@@ -93,10 +93,13 @@ def export_dashboard_json():
         for g, c in genre_counts.most_common()
     ]
 
-    # 제목 단어 빈도 (인기 키워드 대체)
+    # 제목 속 트로프 키워드 빈도 (인기 키워드 대체)
     word_counter = Counter()
     for row in current_rows:
-        word_counter.update(_clean_title_words(row["title"]))
+        title = row["title"]
+        for kw in TROPE_KEYWORDS:
+            if kw in title:
+                word_counter[kw] += 1
     top_words = word_counter.most_common(11)
     size_tiers = ["k1", "k1", "k2", "k2", "k2", "k3", "k3", "k3", "k4", "k4", "k4"]
     keywords = [
