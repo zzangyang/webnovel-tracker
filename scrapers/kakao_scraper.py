@@ -1,20 +1,28 @@
 """
 카카오페이지 웹소설 랭킹 스크래퍼.
-★ naver_scraper.py와 동일하게 selector는 placeholder — F12로 직접 확인 후 교체할 것.
+
+카카오페이지는 Next.js 기반이라 class명이 빌드마다 바뀌는 해시값
+(예: jsx-2792908821)이라 그걸로는 못 잡음.
+대신 각 작품 링크의 aria-label / data-t-obj 속성에 제목·순위·장르가
+텍스트/JSON으로 들어있어서 그걸 파싱하는 방식으로 감.
+
+aria-label 예시: "작품, {제목}, {태그}, 최신 회차 업데이트됨, {연령제한}, 랭킹 {N}위 {변동}, 버튼"
+data-t-obj 예시: {"eventMeta": {"id": "...", "name": "{제목}", "series_id": "...",
+                                "category": "웹소설", "subcategory": "{장르}"}, ...}
+
+★ data-t-obj의 최상위 키("eventMeta")는 화면 캡처에서 줄바꿈 때문에 확실치 않음 —
+  실행해보고 안 맞으면 print(raw)로 실제 키 확인해서 고칠 것.
+
+실행 전 설치:
+  pip install playwright
+  playwright install chromium
 """
+import re
+import json
+from urllib.parse import urljoin
 from playwright.sync_api import sync_playwright
 
-# TODO: 실제 랭킹 URL로 교체 (장르 탭별로 URL이 다를 수 있음, 그 경우 리스트로 관리)
 RANKING_URL = "https://page.kakao.com/menu/10011/screen/94"
-
-SELECTORS = {
-    "item": "[class*='rank'] li",
-    "title": "[class*='title']",
-    "author": "[class*='author']",
-    "genre": "[class*='genre']",
-    "link": "a",
-    "exclusive_badge": "[class*='exclusive']",
-}
 
 
 def scrape_kakao_ranking(headless=True):
@@ -24,29 +32,51 @@ def scrape_kakao_ranking(headless=True):
         page = browser.new_page()
         page.goto(RANKING_URL, wait_until="networkidle")
 
-        items = page.query_selector_all(SELECTORS["item"])
-        for rank, item in enumerate(items, start=1):
-            title_el = item.query_selector(SELECTORS["title"])
-            author_el = item.query_selector(SELECTORS["author"])
-            genre_el = item.query_selector(SELECTORS["genre"])
-            link_el = item.query_selector(SELECTORS["link"])
-            exclusive_el = item.query_selector(SELECTORS["exclusive_badge"])
+        links = page.query_selector_all('a[href^="/content/"]')
+        for idx, link in enumerate(links, start=1):
+            href = link.get_attribute("href") or ""
+            id_match = re.search(r"/content/(\d+)", href)
+            work_id = id_match.group(1) if id_match else href
 
-            if not title_el or not link_el:
+            labeled_div = link.query_selector("[aria-label]")
+            aria_label = labeled_div.get_attribute("aria-label") if labeled_div else None
+
+            title = None
+            genre = None
+            rank_num = idx
+
+            # 1순위: data-t-obj JSON에서 제목/장르 파싱 시도
+            obj_div = link.query_selector("[data-t-obj]")
+            if obj_div:
+                raw = obj_div.get_attribute("data-t-obj")
+                try:
+                    data = json.loads(raw)
+                    meta = data.get("eventMeta", data)
+                    title = meta.get("name")
+                    genre = meta.get("subcategory")
+                except Exception:
+                    pass  # JSON 파싱 실패하면 아래 aria-label 파싱으로 대체
+
+            # 2순위: aria-label 텍스트 파싱 (title 없을 때 + 순위는 항상 여기서)
+            if aria_label:
+                parts = [p.strip() for p in aria_label.split(",")]
+                if not title and len(parts) > 1:
+                    title = parts[1]
+                rank_match = re.search(r"랭킹\s*(\d+)위", aria_label)
+                if rank_match:
+                    rank_num = int(rank_match.group(1))
+
+            if not title:
                 continue
-
-            href = link_el.get_attribute("href") or ""
-            # TODO: 카카오페이지 URL 패턴에 맞게 작품 ID 추출 로직 교체
-            work_id = href.rstrip("/").split("/")[-1]
 
             results.append({
                 "platform_work_id": work_id,
-                "title": title_el.inner_text().strip(),
-                "author": author_el.inner_text().strip() if author_el else None,
-                "genre": genre_el.inner_text().strip() if genre_el else None,
-                "url": href if href.startswith("http") else f"https://page.kakao.com{href}",
-                "is_exclusive": exclusive_el is not None,
-                "rank": rank,
+                "title": title,
+                "author": None,
+                "genre": genre,
+                "url": urljoin(RANKING_URL, href),
+                "is_exclusive": "독점" in title,
+                "rank": rank_num,
                 "views": None,
             })
 
