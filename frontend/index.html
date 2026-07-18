@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>웹소기록부 — 웹소설 순위 트렌드</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@500;700&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0b1022;
+    --bg-card:#141b34;
+    --bg-card-2:#1c2440;
+    --border:#2a3358;
+    --text:#eef0f8;
+    --text-soft:#9aa2c4;
+    --accent:#ff6b52;
+    --accent-soft:#3a2030;
+    --serif:'Noto Serif KR', serif;
+    --sans:'Noto Sans KR', sans-serif;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--sans);
+    line-height:1.6;
+  }
+  .wrap{max-width:1080px; margin:0 auto; padding:0 24px 80px;}
+
+  header{
+    background:#070a18;
+    margin:0 calc(50% - 50vw) 0;
+    padding:18px calc(50vw - 50% + 24px);
+    border-bottom:1px solid var(--border);
+  }
+  .header-row{
+    max-width:1080px; margin:0 auto; padding:0 24px;
+    display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;
+  }
+  .brand{
+    font-family:var(--serif); font-weight:700; font-size:22px; letter-spacing:0.01em; color:#fff;
+    display:flex; align-items:baseline; gap:8px;
+  }
+  .brand small{font-family:var(--sans); font-weight:500; font-size:10px; color:var(--accent); letter-spacing:0.15em;}
+  nav{display:flex; gap:20px; font-size:13px;}
+  nav a{color:var(--text-soft); text-decoration:none; padding-bottom:2px; border-bottom:1px solid transparent;}
+  nav a:hover, nav a:focus-visible{color:#fff; border-color:var(--accent);}
+  .issue-line{
+    display:flex; justify-content:space-between; font-size:12px; color:var(--text-soft);
+    padding:14px 0; margin-bottom:24px; letter-spacing:0.02em;
+  }
+
+  section{margin-bottom:44px;}
+  .section-head{
+    display:flex; align-items:center; gap:10px; margin-bottom:16px;
+  }
+  .section-head::before{
+    content:''; width:6px; height:20px; background:var(--accent); border-radius:2px; flex-shrink:0;
+  }
+  .section-head h2{font-family:var(--serif); font-size:19px; font-weight:700; color:#fff;}
+  .section-head .en{font-size:11px; color:var(--text-soft); letter-spacing:0.1em;}
+
+  .feature{
+    background:linear-gradient(135deg, #1c2440 0%, #0e1330 100%);
+    border:1px solid var(--border);
+    color:var(--text); padding:32px 28px; border-radius:16px;
+    display:flex; justify-content:space-between; align-items:center; gap:24px; flex-wrap:wrap;
+  }
+  .feature .label{
+    display:inline-block; font-size:11px; letter-spacing:0.1em; color:#1a1008;
+    background:var(--accent); padding:3px 10px; border-radius:20px; margin-bottom:12px; font-weight:500;
+  }
+  .feature h1{font-family:var(--serif); font-size:26px; font-weight:700; line-height:1.4; color:#fff;}
+  .feature .meta{font-size:12px; color:var(--text-soft); margin-top:8px;}
+  .feature a{
+    color:#1a1008; background:var(--accent); padding:10px 18px; font-size:12px; border-radius:8px;
+    text-decoration:none; white-space:nowrap; font-weight:500;
+  }
+  .feature a:hover{opacity:0.85;}
+
+  .grid-2{display:grid; grid-template-columns:1.6fr 1fr; gap:28px;}
+  @media (max-width:760px){ .grid-2{grid-template-columns:1fr;} }
+
+  .ledger-row{
+    display:grid; grid-template-columns:36px 1fr auto; gap:14px; align-items:center;
+    padding:12px 14px; margin-bottom:8px; border-radius:10px; background:var(--bg-card);
+    border:1px solid var(--border);
+  }
+  .rank-num{font-family:var(--serif); font-weight:700; font-size:18px; font-variant-numeric:tabular-nums; color:var(--accent);}
+  .work-title{font-size:14px; font-weight:500; color:var(--text);}
+  .genre-pill{
+    display:inline-block; font-size:10px; padding:2px 8px; border-radius:20px; font-weight:500;
+    margin-top:4px;
+  }
+  .stamp{
+    font-family:var(--sans); font-weight:700; font-size:12px; color:#5eeba3;
+    background:#12351f; border-radius:20px; padding:4px 10px;
+    display:inline-flex; align-items:center; gap:2px; white-space:nowrap;
+  }
+
+  .genre-bar-row{margin-bottom:14px;}
+  .genre-bar-label{display:flex; justify-content:space-between; font-size:12px; margin-bottom:5px; color:var(--text);}
+  .genre-bar-label b{font-family:var(--serif);}
+  .genre-bar-track{height:9px; background:var(--bg-card-2); border-radius:6px; position:relative; overflow:hidden;}
+  .genre-bar-fill{height:100%; border-radius:6px;}
+
+  .new-grid{display:grid; grid-template-columns:repeat(5, 1fr); gap:12px;}
+  @media (max-width:760px){ .new-grid{grid-template-columns:repeat(2,1fr);} }
+  .new-card{
+    background:var(--bg-card); padding:14px 12px; border-radius:10px; border-top:4px solid var(--accent);
+    border-left:1px solid var(--border); border-right:1px solid var(--border); border-bottom:1px solid var(--border);
+    display:flex; flex-direction:column; gap:6px; min-height:120px;
+  }
+  .new-card .genre-tag{
+    display:inline-block; font-size:10px; letter-spacing:0.02em; font-weight:500;
+    padding:2px 8px; border-radius:20px; width:fit-content;
+  }
+  .new-card .title{font-size:13px; font-weight:500; flex:1; color:var(--text);}
+  .new-card .platform{font-size:10px; color:var(--text-soft);}
+
+  .idea-banner{
+    display:flex; align-items:center; gap:8px; font-size:11px; color:var(--text-soft);
+    margin-bottom:14px;
+  }
+  .idea-banner .badge{
+    background:var(--accent); color:#1a1008; font-weight:700;
+    font-size:11px; padding:4px 12px; border-radius:20px; letter-spacing:0.03em;
+  }
+  .idea-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:16px;}
+  @media (max-width:760px){ .idea-grid{grid-template-columns:1fr;} }
+  .idea-card{
+    border-radius:14px; padding:18px; background:var(--bg-card); border:1px solid var(--border);
+    display:flex; flex-direction:column; gap:10px; border-left:5px solid var(--accent);
+  }
+  .idea-card .idea-title{font-family:var(--serif); font-weight:700; font-size:15px; color:#fff;}
+  .idea-card .logline{font-size:13px; color:var(--text-soft); line-height:1.6;}
+  .idea-card .tags{display:flex; gap:6px; flex-wrap:wrap;}
+  .idea-card .tag{font-size:10px; padding:3px 10px; border-radius:20px; font-weight:500;}
+  .idea-card .basis{font-size:10px; color:var(--text-soft); border-top:1px dashed var(--border); padding-top:8px; margin-top:auto;}
+  .idea-refresh{
+    display:inline-flex; align-items:center; gap:6px; font-size:12px; color:#1a1008;
+    background:var(--accent); border:none; padding:8px 16px; border-radius:8px; cursor:pointer;
+    margin-left:auto; font-weight:500;
+  }
+  .idea-refresh:hover{opacity:0.85;}
+  .idea-refresh:disabled{opacity:0.5; cursor:default;}
+  .idea-head-row{display:flex; align-items:center; gap:8px; margin-bottom:14px; flex-wrap:wrap;}
+
+  .keyword-cloud{display:flex; flex-wrap:wrap; gap:10px;}
+  .keyword-cloud span{
+    font-weight:500; cursor:default; padding:6px 14px; border-radius:20px; display:inline-block;
+  }
+  .keyword-cloud span.k1{font-size:16px; font-weight:700;}
+  .keyword-cloud span.k2{font-size:14px;}
+  .keyword-cloud span.k3{font-size:13px;}
+  .keyword-cloud span.k4{font-size:12px;}
+
+  .report-list{display:flex; flex-direction:column; background:var(--bg-card); border:1px solid var(--border); border-radius:10px; overflow:hidden;}
+  .report-list a{
+    display:flex; justify-content:space-between; padding:13px 16px; border-bottom:1px solid var(--border);
+    text-decoration:none; color:var(--text); font-size:13px;
+  }
+  .report-list a:last-child{border-bottom:none;}
+  .report-list a:hover{color:var(--accent); background:var(--bg-card-2);}
+  .report-list .date{color:var(--text-soft); font-size:11px;}
+
+  footer{
+    border-top:1px solid var(--border); padding-top:16px; margin-top:32px;
+    font-size:11px; color:var(--text-soft); text-align:center;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="header-row">
+      <div class="brand">웹소기록부<small>WEBNOVEL RANKING LEDGER</small></div>
+      <nav>
+        <a href="#">홈</a><a href="#">급상승</a><a href="#">신작</a>
+        <a href="#">키워드</a><a href="#">리포트</a><a href="#">검색</a>
+      </nav>
+    </div>
+  </header>
+  <div class="issue-line">
+    <span>2026년 7월 3주차 기준</span>
+    <span>매주 일요일 업데이트</span>
+  </div>
+
+  <section class="feature">
+    <div>
+      <div class="label">이번 주 주목작</div>
+      <h1>물거품이 되기 전에</h1>
+      <div class="meta">로맨스판타지 · 네이버시리즈 독점 · 74단계 급상승</div>
+    </div>
+    <a href="#">주간 리포트 보기 →</a>
+  </section>
+
+  <section>
+    <div class="grid-2">
+      <div>
+        <div class="section-head"><h2>급상승 TOP 5</h2><span class="en">TRENDING UP</span></div>
+        <div id="risingList"></div>
+      </div>
+      <div>
+        <div class="section-head"><h2>장르 점유율</h2><span class="en">GENRE SHARE</span></div>
+        <div id="genreBars"></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head"><h2>신규 진입작</h2><span class="en">NEW ENTRIES</span></div>
+    <div class="new-grid" id="newGrid"></div>
+  </section>
+
+  <section>
+    <div class="section-head"><h2>신작 아이디어 제안</h2><span class="en">IDEA SUGGESTIONS</span></div>
+    <div class="idea-head-row">
+      <span class="badge">TREND BASED</span>
+      <span style="font-size:11px; color:var(--text-soft);">이번 주 급상승·신규 데이터에서 뽑은 소재 조합 — 초안일 뿐, 다듬는 건 네 몫</span>
+      <button class="idea-refresh" id="ideaRefreshBtn" onclick="regenerateIdeas()">↻ 다시 제안받기</button>
+    </div>
+    <div class="idea-grid" id="ideaGrid"></div>
+  </section>
+
+  <section>
+    <div class="section-head"><h2>인기 키워드</h2><span class="en">KEYWORDS</span></div>
+    <div class="keyword-cloud" id="keywordCloud"></div>
+  </section>
+
+  <section>
+    <div class="section-head"><h2>주간 리포트</h2><span class="en">REPORTS</span></div>
+    <div class="report-list" id="reportList"></div>
+  </section>
+
+  <section>
+    <div class="section-head"><h2>업계 통계</h2><span class="en">INDUSTRY REPORTS</span></div>
+    <div class="grid-2" style="grid-template-columns:1fr 1fr;">
+      <div class="new-card" style="border-top-color:var(--accent); min-height:auto;">
+        <span class="genre-tag" style="color:var(--accent); background:var(--bg-card-2);">2022년 실태조사</span>
+        <div class="title">산업 규모 약 1조390억원 · 이용자 약 587만명</div>
+        <div class="platform">출처: 한국출판문화산업진흥원(KPIPA) · 문체부 첫 실태조사</div>
+        <a href="https://www.kpipa.or.kr/p/g3_1/117" target="_blank" style="font-size:11px; color:var(--accent); text-decoration:none;">보고서 원문 →</a>
+      </div>
+      <div class="new-card" style="border-top-color:var(--accent); min-height:auto;">
+        <span class="genre-tag" style="color:var(--accent); background:var(--bg-card-2);">2024년 최신 조사</span>
+        <div class="title">웹소설 산업 현황 실태조사 (최신)</div>
+        <div class="platform">출처: 한국출판문화산업진흥원(KPIPA)</div>
+        <a href="https://www.kpipa.or.kr/p/g3_1/143" target="_blank" style="font-size:11px; color:var(--accent); text-decoration:none;">보고서 원문 →</a>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    본 서비스는 각 플랫폼과 제휴 관계가 없는 독립 트렌드 분석 도구입니다 · 각 작품의 저작권은 해당 작가에게 있습니다
+  </footer>
+</div>
+
+<script>
+const rising = [
+  { rank: 1, delta: 74, title: "물거품이 되기 전에", meta: "로맨스판타지 · 네이버 · 독점" },
+  { rank: 2, delta: 41, title: "레가스", meta: "판타지 · 네이버 · 신규" },
+  { rank: 3, delta: 33, title: "힐러는 원래 앞장선다", meta: "판타지 · 네이버 · 신규" },
+  { rank: 4, delta: 19, title: "당신의 막내입니다", meta: "BL · 네이버 · 선공개" },
+  { rank: 5, delta: 12, title: "다이아몬드 더스트", meta: "판타지 · 네이버" },
+];
+
+const genres = [
+  { name: "판타지", pct: 42 },
+  { name: "로맨스", pct: 21 },
+  { name: "로맨스판타지", pct: 21 },
+  { name: "BL", pct: 15 },
+];
+
+const newEntries = [
+  { genre: "판타지", title: "회장님, 신점 보시려면 줄부터 서세요", platform: "네이버" },
+  { genre: "판타지", title: "용사의 인벤토리를 물려받았다", platform: "네이버 · 독점" },
+  { genre: "로맨스", title: "우리는 사랑이 아닌", platform: "네이버 · 독점" },
+  { genre: "판타지", title: "금쪽같은 마왕님", platform: "네이버" },
+  { genre: "로맨스", title: "내 비서의 임신", platform: "네이버 · 독점" },
+];
+
+const ideas = [
+  {
+    title: "가안 · 헌터 x 요식업",
+    logline: "던전 옆 식당을 물려받은 최약체 헌터가, 요리로 손님(과 몬스터)을 길들인다.",
+    tags: ["헌터물", "요리물"],
+    basis: "근거: 헌터물 신규진입 3건 + 힐링물 키워드 급상승",
+  },
+  {
+    title: "가안 · 회귀 x 영지",
+    logline: "세 번째 회귀에서야 깨달았다 — 무너뜨릴 게 아니라 세를 불려야 이긴다는 걸.",
+    tags: ["회귀", "영지물"],
+    basis: "근거: 영지물 키워드 노출 증가 + 로판 점유율 유지",
+  },
+  {
+    title: "가안 · 착각물 x BL",
+    logline: "다 정리했다고 생각한 순간, 상대는 이미 다른 결말을 쓰고 있었다.",
+    tags: ["착각물", "BL"],
+    basis: "근거: BL 신규 선공개작 반응 + 착각물 태그 지속 상위권",
+  },
+];
+
+const keywords = [
+  { text: "회귀", size: "k1" }, { text: "헌터물", size: "k1" },
+  { text: "영지물", size: "k2" }, { text: "착각물", size: "k2" },
+  { text: "빙의", size: "k2" }, { text: "힐링물", size: "k3" },
+  { text: "복수극", size: "k3" }, { text: "계약연애", size: "k3" },
+  { text: "환생", size: "k4" }, { text: "재벌", size: "k4" }, { text: "육아물", size: "k4" },
+];
+
+const reports = [
+  { date: "2026-07-13", title: "2026년 7월 3주차 리포트" },
+  { date: "2026-07-06", title: "2026년 7월 1주차 리포트" },
+  { date: "2026-06-29", title: "2026년 6월 5주차 리포트" },
+];
+
+const GENRE_COLORS = {
+  "판타지": { fg: "#b3a5ff", bg: "#241c47" },
+  "로맨스": { fg: "#ff9ec2", bg: "#3a1f30" },
+  "로맨스판타지": { fg: "#5eeba3", bg: "#12351f" },
+  "BL": { fg: "#ffc06a", bg: "#3a2a10" },
+};
+function genreColor(name){
+  const key = Object.keys(GENRE_COLORS).find(k => name.includes(k));
+  return GENRE_COLORS[key] || { fg: "#9aa2c4", bg: "#1c2440" };
+}
+const TAG_PALETTE = [
+  { fg: "#b3a5ff", bg: "#241c47" }, { fg: "#ff9ec2", bg: "#3a1f30" },
+  { fg: "#5eeba3", bg: "#12351f" }, { fg: "#ffc06a", bg: "#3a2a10" },
+  { fg: "#7ec8f7", bg: "#152a3a" },
+];
+function tagColor(i){ return TAG_PALETTE[i % TAG_PALETTE.length]; }
+
+function renderRising(){
+  document.getElementById('risingList').innerHTML = rising.map(r => {
+    const g = genreColor(r.meta);
+    return `
+    <div class="ledger-row">
+      <div class="rank-num">${r.rank}</div>
+      <div>
+        <div class="work-title">${r.title}</div>
+        <span class="genre-pill" style="color:${g.fg}; background:${g.bg};">${r.meta}</span>
+      </div>
+      <div class="stamp">▲ ${r.delta}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderGenreBars(){
+  document.getElementById('genreBars').innerHTML = genres.map(g => {
+    const c = genreColor(g.name);
+    return `
+    <div class="genre-bar-row">
+      <div class="genre-bar-label"><b style="color:${c.fg}">${g.name}</b><span>${g.pct}%</span></div>
+      <div class="genre-bar-track"><div class="genre-bar-fill" style="width:${g.pct}%; background:${c.fg}"></div></div>
+    </div>`;
+  }).join('');
+}
+
+function renderNewEntries(){
+  document.getElementById('newGrid').innerHTML = newEntries.map(n => {
+    const g = genreColor(n.genre);
+    return `
+    <div class="new-card" style="border-top-color:${g.fg}">
+      <span class="genre-tag" style="color:${g.fg}; background:${g.bg};">${n.genre}</span>
+      <div class="title">${n.title}</div>
+      <div class="platform">${n.platform}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderIdeas(){
+  document.getElementById('ideaGrid').innerHTML = ideas.map(i => `
+    <div class="idea-card">
+      <div class="idea-title">${i.title}</div>
+      <div class="logline">${i.logline}</div>
+      <div class="tags">${i.tags.map((t, idx) => {
+        const c = tagColor(idx);
+        return `<span class="tag" style="color:${c.fg}; background:${c.bg};">${t}</span>`;
+      }).join('')}</div>
+      <div class="basis">${i.basis}</div>
+    </div>`).join('');
+}
+
+function renderKeywords(){
+  document.getElementById('keywordCloud').innerHTML = keywords.map((k, idx) => {
+    const c = tagColor(idx);
+    return `<span class="${k.size}" style="color:${c.fg}; background:${c.bg};">${k.text}</span>`;
+  }).join('');
+}
+
+function renderReports(){
+  document.getElementById('reportList').innerHTML = reports.map(r => `
+    <a href="#"><span>${r.title}</span><span class="date">${r.date}</span></a>
+  `).join('');
+}
+
+renderRising();
+renderGenreBars();
+renderNewEntries();
+renderIdeas();
+renderKeywords();
+renderReports();
+
+async function regenerateIdeas(){
+  const btn = document.getElementById('ideaRefreshBtn');
+  btn.disabled = true;
+  btn.textContent = "생성 중...";
+
+  const trendContext = {
+    급상승: rising.map(r => r.title + " (" + r.meta + ")"),
+    신규진입: newEntries.map(n => n.genre + " " + n.title),
+    인기키워드: keywords.map(k => k.text),
+    장르점유율: genres,
+  };
+
+  const prompt = `당신은 한국 웹소설 시장 트렌드 분석가입니다. 아래 이번 주 트렌드 데이터를 참고해서,
+새로 집필할 만한 웹소설 아이디어 3개를 제안하세요.
+
+트렌드 데이터: ${JSON.stringify(trendContext)}
+
+각 아이디어는 다음 JSON 배열 형식으로만 답하세요. 다른 설명 없이 JSON만 출력하세요:
+[
+  {"title": "가안 · 소재 요약(10자 내외)", "logline": "한 문장 로그라인(40자 내외)", "tags": ["태그1","태그2"], "basis": "근거: 어떤 트렌드 데이터에 기반했는지 한 줄"},
+  ...
+]`;
+
+  try{
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: 1000,
+        messages: [{ role: "user", content: prompt }],
+      }),
+    });
+    const data = await response.json();
+    const textBlock = data.content.find(b => b.type === "text");
+    const clean = textBlock.text.replace(/```json|```/g, "").trim();
+    const newIdeas = JSON.parse(clean);
+
+    ideas.length = 0;
+    newIdeas.forEach(i => ideas.push(i));
+    renderIdeas();
+  }catch(e){
+    console.error("아이디어 생성 실패:", e);
+    alert("아이디어 생성에 실패했어요. 잠시 후 다시 시도해줘.");
+  }finally{
+    btn.disabled = false;
+    btn.textContent = "↻ 다시 제안받기";
+  }
+}
+</script>
+</body>
+</html>
